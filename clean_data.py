@@ -1,10 +1,9 @@
-
 import pandas as pd
 import numpy as np
 import os
 
 # Paths
-DATA_DIR = r"C:\Users\nithi\OneDrive\Desktop\dataverse\VelocityMart"
+DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 SKU_PATH = os.path.join(DATA_DIR, "sku_master.csv")
 ORDER_PATH = os.path.join(DATA_DIR, "order_history.csv")
 PICKER_PATH = os.path.join(DATA_DIR, "picker_movement.csv")

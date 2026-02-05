@@ -190,7 +190,7 @@ spoilage_loss_raw = spoilage_rate * 5  # Normalize to 0-1 scale
 spoilage_weight = 0.40
 spoilage_score = spoilage_loss_raw * spoilage_weight
 
-# Total Chaos Score Calculation
+# Final Chaos Score (0-100 scale)
 raw_chaos = (efficiency_score + safety_score + spoilage_score) * 100
 chaos_score = min(100, raw_chaos)
 
@@ -258,10 +258,22 @@ with tab_overview:
         st.markdown(f"""
         **Chaos Score Formula:**
         ```
-        Chaos = Σ (Factor_Loss * Weight) * 100
+        Chaos Score = [(Efficiency × {efficiency_weight}) + (Safety × {safety_weight}) + (Spoilage × {spoilage_weight})] × 100
         ```
-        - **Inventory Risk (40%)**: Hard constraint - Temperature zone mismatches
-        - **Efficiency (35%)**: Pick time degradation vs {BASELINE_PICK_TIME}m baseline
+        
+        **Component Breakdown:**
+        
+        | Component | Raw Value | Weight | Contribution | Rationale |
+        |-----------|-----------|--------|--------------|-----------|
+        | **Efficiency Loss** | {efficiency_loss_raw:.3f} | {efficiency_weight:.0%} | {efficiency_score:.3f} | Pick time degradation: {avg_pick_time_min:.2f} / {BASELINE_PICK_TIME} - 1 = {efficiency_loss_raw:.1%} above baseline |
+        | **Safety Violations** | {safety_loss_raw:.3f} | {safety_weight:.0%} | {safety_score:.3f} | Illegal shortcuts: {shortcut_rate:.2%} of movements × 10 normalization factor |
+        | **Inventory Risk** | {spoilage_loss_raw:.3f} | {spoilage_weight:.0%} | {spoilage_score:.3f} | Temperature violations: {spoilage_rate:.1%} of SKUs × 5 normalization factor |
+        
+        **Final Score:** {chaos_score:.1f} / 100 (CRITICAL threshold: >80)
+        
+        **Weight Rationale:**
+        - **Spoilage (40%)**: HARD CONSTRAINT - Causes compliance failures and simulation rejection
+        - **Efficiency (35%)**: Direct revenue impact - 63% degradation in fulfillment time
         - **Safety (25%)**: Regulatory and liability risk - Unsafe picker behavior
         """)
     
@@ -270,34 +282,29 @@ with tab_overview:
     
     chaos_breakdown = pd.DataFrame({
         'Factor': [
-            'Inventory Risk (Temp)', 
-            'Efficiency Loss (Time)', 
-            'Safety Violations (Shortcuts)'
+            f'Efficiency Loss\n({efficiency_weight:.0%} weight)',
+            f'Safety Violations\n({safety_weight:.0%} weight)',
+            f'Inventory Risk\n({spoilage_weight:.0%} weight)'
         ],
-        'Weighted Contribution': [
-            spoilage_score * 100, 
-            efficiency_score * 100, 
-            safety_score * 100
-        ],
-        'Raw Score': [spoilage_rate, efficiency_loss_raw, shortcut_rate]
+        'Weighted Contribution': [efficiency_score * 100, safety_score * 100, spoilage_score * 100],
+        'Raw Score': [efficiency_loss_raw, safety_loss_raw, spoilage_loss_raw]
     })
     
-    fig_chaos = go.Figure(data=[
-        go.Bar(
-            x=chaos_breakdown['Factor'],
-            y=chaos_breakdown['Weighted Contribution'],
-            text=[f"{val:.1f}" for val in chaos_breakdown['Weighted Contribution']],
-            textposition='auto',
-            marker=dict(
-                color=chaos_breakdown['Weighted Contribution'],
-                colorscale=[[0, '#4facfe'], [0.5, '#00f2fe'], [1, '#43e97b']],
-                showscale=False,
-                line=dict(color='rgba(255, 255, 255, 0.3)', width=2)
-            ),
-            hovertemplate='<b>%{x}</b><br>Weighted: %{y:.1f}<br>Raw: %{customdata:.3f}<extra></extra>',
-            customdata=chaos_breakdown['Raw Score']
-        )
-    ])
+    fig_chaos = go.Figure()
+    fig_chaos.add_trace(go.Bar(
+        x=chaos_breakdown['Factor'],
+        y=chaos_breakdown['Weighted Contribution'],
+        text=[f"{val:.1f}" for val in chaos_breakdown['Weighted Contribution']],
+        textposition='auto',
+        marker=dict(
+            color=chaos_breakdown['Weighted Contribution'],
+            colorscale=[[0, '#4facfe'], [0.5, '#00f2fe'], [1, '#43e97b']],
+            showscale=False,
+            line=dict(color='rgba(255, 255, 255, 0.3)', width=2)
+        ),
+        hovertemplate='<b>%{x}</b><br>Weighted: %{y:.1f}<br>Raw: %{customdata:.3f}<extra></extra>',
+        customdata=chaos_breakdown['Raw Score']
+    ))
     
     fig_chaos.update_layout(
         title={
@@ -306,6 +313,7 @@ with tab_overview:
         },
         xaxis_title="Operational Factor (with applied weight)",
         yaxis_title="Contribution to Final Chaos Score (0-100 scale)",
+        template="plotly_dark",
         height=450,
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -356,7 +364,8 @@ with tab_heatmap:
     </div>
     """, unsafe_allow_html=True)
     
-    # Heatmap
+    st.markdown("**This heatmap visualizes picker activity density across all aisles and hours to identify congestion patterns.**")
+    
     fig_heatmap = px.density_heatmap(
         heatmap_data, 
         x='hour', 
@@ -386,7 +395,7 @@ with tab_heatmap:
     fig_heatmap.add_annotation(
         x=19,
         y=aisle_b_code,
-        text="GRIDLOCK",
+        text="⚠️ BOTTLENECK",
         showarrow=True,
         arrowhead=2,
         arrowcolor="red",
@@ -408,11 +417,10 @@ with tab_heatmap:
     top_congested['congestion_level'] = top_congested['pick_count'].apply(
         lambda x: '🔴 Critical' if x > aisle_b_peak_count * 0.8 else '🟡 High' if x > aisle_b_peak_count * 0.5 else '🟢 Moderate'
     )
-    
     st.dataframe(
         top_congested[['aisle', 'hour', 'pick_count', 'congestion_level']].rename(columns={
             'aisle': 'Aisle',
-            'hour': 'Hour (24h)',
+            'hour': 'Hour',
             'pick_count': 'Pick Count',
             'congestion_level': 'Severity'
         }),
@@ -445,6 +453,7 @@ with tab_spoilage:
         temp_breakdown = sku_slot_df[spoilage_mask].groupby(['temp_req', 'temp_zone']).size().reset_index(name='count')
         
         col1, col2 = st.columns(2)
+        
         with col1:
             st.markdown("**Violation Breakdown by Required Temperature:**")
             violation_summary = sku_slot_df[spoilage_mask]['temp_req'].value_counts().reset_index()
@@ -455,7 +464,7 @@ with tab_spoilage:
             st.markdown("**Mismatch Patterns:**")
             st.dataframe(
                 temp_breakdown.rename(columns={
-                    'temp_req': 'Required Temp',
+                    'temp_req': 'Required',
                     'temp_zone': 'Actual Zone',
                     'count': 'Violations'
                 }),
@@ -463,14 +472,13 @@ with tab_spoilage:
                 hide_index=True
             )
         
-        # Table of specific SKUs (sample)
-        st.markdown("**Sample of SKUs Requiring Immediate Relocation:**")
+        st.markdown("**Detailed Violation List (First 100):**")
         st.dataframe(
-            sku_slot_df[spoilage_mask][['sku_id', 'category', 'temp_req', 'current_slot', 'temp_zone']].head(15).rename(columns={
+            sku_slot_df[spoilage_mask][['sku_id', 'category', 'temp_req', 'slot_id', 'temp_zone']].head(100).rename(columns={
                 'sku_id': 'SKU ID',
                 'category': 'Category',
                 'temp_req': 'Required Temp',
-                'current_slot': 'Current Slot',
+                'slot_id': 'Current Slot',
                 'temp_zone': 'Actual Zone'
             }),
             use_container_width=True,
@@ -497,13 +505,27 @@ with tab_constraints:
     </div>
     """, unsafe_allow_html=True)
     
+    col1, col2 = st.columns([1, 3])
+    
+    with col1:
+        if weight_viol_count > 0:
+            st.metric("⚠️ Weight Violations", weight_viol_count, delta="Requires Correction", delta_color="inverse")
+        else:
+            st.metric("✅ Weight Violations", weight_viol_count, delta="Compliant", delta_color="normal")
+    
+    with col2:
+        if weight_viol_count > 0:
+            st.warning(f"Found {weight_viol_count} SKUs exceeding slot weight capacity. Review for data forensics issues.")
+        else:
+            st.success("All SKUs are within slot weight capacity limits.")
+    
     if weight_viol_count > 0:
-        st.warning(f"⚖️ ALERT: {weight_viol_count} weight capacity violations detected.")
+        st.markdown("**Violation Details:**")
         st.dataframe(
-            sku_slot_df[weight_violation_mask][['sku_id', 'weight_kg', 'current_slot', 'max_weight_kg']].rename(columns={
+            sku_slot_df[weight_violation_mask][['sku_id', 'weight_kg', 'slot_id', 'max_weight_kg']].rename(columns={
                 'sku_id': 'SKU ID',
                 'weight_kg': 'SKU Weight (kg)',
-                'current_slot': 'Current Slot',
+                'slot_id': 'Current Slot',
                 'max_weight_kg': 'Max Capacity (kg)'
             }),
             use_container_width=True,
@@ -585,7 +607,7 @@ with tab_whatif:
     </div>
     """, unsafe_allow_html=True)
     
-    # Volume Increase Simulation
+    # Scenario 1: Volume Increase
     st.markdown("### 📈 Scenario 1: +20% Order Volume Increase")
     
     volume_increase = st.checkbox("Simulate +20% Volume Spike", value=False)
