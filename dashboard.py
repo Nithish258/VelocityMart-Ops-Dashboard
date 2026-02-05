@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6,125 +5,765 @@ import plotly.express as px
 import plotly.graph_objects as go
 import os
 
-# Page Config
-st.set_page_config(page_title="VelocityMart Ops Dashboard", layout="wide", initial_sidebar_state="expanded")
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+st.set_page_config(
+    page_title="VelocityMart Ops Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Custom CSS for enhanced visuals with vibrant colors and modern design
+# ═══════════════════════════════════════════════════════════════════════════════
+# WORLD-CLASS ENTERPRISE DESIGN SYSTEM
+# Inspired by: Amazon Ops, Palantir Foundry, Stripe Dashboard
+# ═══════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-    /* Main container styling */
-    .main {
-        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    /* ═══════════════════════════════════════════════════════════════════════════
+       GOOGLE FONTS - Premium Typography
+    ═══════════════════════════════════════════════════════════════════════════ */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       CSS CUSTOM PROPERTIES - Design Tokens
+    ═══════════════════════════════════════════════════════════════════════════ */
+    :root {
+        /* Premium Dark Gradient Background */
+        --bg-gradient-start: #0f0c29;
+        --bg-gradient-mid: #302b63;
+        --bg-gradient-end: #24243e;
+        
+        /* Surface Colors */
+        --surface-base: rgba(255, 255, 255, 0.02);
+        --surface-elevated: rgba(255, 255, 255, 0.05);
+        --surface-overlay: rgba(255, 255, 255, 0.08);
+        --surface-hover: rgba(255, 255, 255, 0.12);
+        
+        /* Glass Effect */
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        --glass-blur: blur(10px);
+        
+        /* Text Hierarchy */
+        --text-primary: #ffffff;
+        --text-secondary: rgba(255, 255, 255, 0.85);
+        --text-tertiary: rgba(255, 255, 255, 0.65);
+        --text-muted: rgba(255, 255, 255, 0.45);
+        --text-disabled: rgba(255, 255, 255, 0.25);
+        
+        /* Semantic Colors - Vibrant */
+        --critical-primary: #ff4b4b;
+        --critical-secondary: #ff6b6b;
+        --critical-bg: linear-gradient(135deg, rgba(255, 75, 75, 0.25) 0%, rgba(255, 0, 0, 0.15) 100%);
+        --critical-border: rgba(255, 75, 75, 0.5);
+        --critical-glow: 0 4px 20px rgba(255, 75, 75, 0.4);
+        
+        --warning-primary: #ffb800;
+        --warning-secondary: #ffc933;
+        --warning-bg: linear-gradient(135deg, rgba(255, 184, 0, 0.25) 0%, rgba(255, 150, 0, 0.15) 100%);
+        --warning-border: rgba(255, 184, 0, 0.5);
+        --warning-glow: 0 4px 20px rgba(255, 184, 0, 0.4);
+        
+        --success-primary: #00ff00;
+        --success-secondary: #33ff33;
+        --success-bg: linear-gradient(135deg, rgba(0, 255, 0, 0.25) 0%, rgba(0, 200, 0, 0.15) 100%);
+        --success-border: rgba(0, 255, 0, 0.5);
+        --success-glow: 0 4px 20px rgba(0, 255, 0, 0.4);
+        
+        --info-primary: #4b9eff;
+        --info-secondary: #6bb3ff;
+        --info-bg: linear-gradient(135deg, rgba(75, 158, 255, 0.25) 0%, rgba(0, 100, 255, 0.15) 100%);
+        --info-border: rgba(75, 158, 255, 0.5);
+        --info-glow: 0 4px 20px rgba(75, 158, 255, 0.4);
+        
+        /* AI Panel Gradient */
+        --ai-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --ai-glow: 0 8px 32px rgba(102, 126, 234, 0.5);
+        
+        /* Accent Gradients */
+        --accent-gradient-1: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --accent-gradient-2: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        --accent-gradient-3: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        
+        /* Spacing Scale */
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 20px;
+        --space-6: 24px;
+        --space-8: 32px;
+        --space-10: 40px;
+        --space-12: 48px;
+        --space-16: 64px;
+        
+        /* Border Radius */
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 20px;
+        --radius-2xl: 24px;
+        --radius-full: 9999px;
+        
+        /* Shadows */
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+        --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+        
+        /* Transitions */
+        --transition-fast: 0.15s ease;
+        --transition-base: 0.25s ease;
+        --transition-slow: 0.4s ease;
     }
     
-    /* Enhanced metric cards with glassmorphism */
+    /* ═══════════════════════════════════════════════════════════════════════════
+       GLOBAL STYLES
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    html, body, [data-testid="stAppViewContainer"], .main, .stApp {
+        background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%) !important;
+        background-attachment: fixed !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    
+    .block-container {
+        padding: var(--space-8) var(--space-10) var(--space-16) !important;
+        max-width: 1600px !important;
+    }
+    
+    /* Hide Streamlit Chrome */
+    #MainMenu, footer, header, .stDeployButton {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       TYPOGRAPHY SYSTEM
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    h1, h2, h3, h4, h5, h6, p, span, div, li, td, th, label {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+    
+    h1 {
+        font-size: 42px !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.04em !important;
+        line-height: 1.1 !important;
+        background: linear-gradient(135deg, #ffffff 0%, #a0a0ff 50%, #ffffff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: 0 4px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    h2 {
+        font-size: 28px !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.03em !important;
+        color: var(--text-primary) !important;
+        margin-bottom: var(--space-4) !important;
+    }
+    
+    h3 {
+        font-size: 22px !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.02em !important;
+        color: var(--text-primary) !important;
+    }
+    
+    h4 {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        letter-spacing: -0.01em !important;
+        color: var(--text-secondary) !important;
+    }
+    
+    p, li {
+        font-size: 15px !important;
+        line-height: 1.7 !important;
+        color: var(--text-secondary) !important;
+    }
+    
+    code, pre, .stCode {
+        font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+        font-size: 13px !important;
+        background: var(--surface-elevated) !important;
+        border-radius: var(--radius-sm) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       METRIC CARDS - Premium Glassmorphism
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
     .stMetric {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        padding: 20px;
-        border-radius: 15px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        background: var(--glass-bg) !important;
+        backdrop-filter: var(--glass-blur) !important;
+        -webkit-backdrop-filter: var(--glass-blur) !important;
+        padding: var(--space-6) var(--space-6) !important;
+        border-radius: var(--radius-xl) !important;
+        border: 1px solid var(--glass-border) !important;
+        box-shadow: var(--glass-shadow) !important;
+        transition: all var(--transition-base) !important;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stMetric::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--accent-gradient-1);
+        opacity: 0;
+        transition: opacity var(--transition-base);
     }
     
     .stMetric:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5);
+        transform: translateY(-6px) !important;
+        box-shadow: 0 16px 48px 0 rgba(31, 38, 135, 0.5) !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
     }
     
-    /* Warning box with vibrant red gradient */
+    .stMetric:hover::before {
+        opacity: 1;
+    }
+    
+    [data-testid="stMetricValue"] {
+        font-size: 38px !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.03em !important;
+        background: linear-gradient(135deg, #ffffff 0%, #e0e0ff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    [data-testid="stMetricLabel"] {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.08em !important;
+        color: var(--text-tertiary) !important;
+    }
+    
+    [data-testid="stMetricDelta"] {
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        padding: var(--space-1) var(--space-3) !important;
+        border-radius: var(--radius-full) !important;
+        background: var(--surface-elevated) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       WARNING BOX - Critical Alerts
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
     .warning-box {
-        background: linear-gradient(135deg, rgba(255, 75, 75, 0.2) 0%, rgba(255, 0, 0, 0.1) 100%);
-        border-left: 5px solid #ff4b4b;
-        padding: 20px;
-        border-radius: 12px;
-        margin: 15px 0;
-        box-shadow: 0 4px 15px rgba(255, 75, 75, 0.3);
-        backdrop-filter: blur(5px);
+        background: var(--critical-bg) !important;
+        border: 1px solid var(--critical-border) !important;
+        border-left: 5px solid var(--critical-primary) !important;
+        padding: var(--space-6) var(--space-8) !important;
+        border-radius: var(--radius-lg) !important;
+        margin: var(--space-5) 0 !important;
+        box-shadow: var(--critical-glow) !important;
+        backdrop-filter: var(--glass-blur) !important;
+        position: relative;
+        overflow: hidden;
     }
     
-    /* Success box with vibrant green gradient */
+    .warning-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(ellipse at top left, rgba(255, 75, 75, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+    }
+    
+    .warning-box h3, .warning-box h4 {
+        color: var(--critical-secondary) !important;
+        font-weight: 700 !important;
+        margin-bottom: var(--space-3) !important;
+        text-shadow: 0 2px 10px rgba(255, 75, 75, 0.3);
+    }
+    
+    .warning-box p, .warning-box li {
+        color: var(--text-secondary) !important;
+        font-size: 14px !important;
+        line-height: 1.7 !important;
+    }
+    
+    .warning-box ul {
+        margin: var(--space-3) 0 !important;
+        padding-left: var(--space-6) !important;
+    }
+    
+    .warning-box li {
+        margin-bottom: var(--space-2) !important;
+    }
+    
+    .warning-box strong {
+        color: var(--text-primary) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       SUCCESS BOX - Positive Outcomes
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
     .success-box {
-        background: linear-gradient(135deg, rgba(0, 255, 0, 0.2) 0%, rgba(0, 200, 0, 0.1) 100%);
-        border-left: 5px solid #00ff00;
-        padding: 20px;
-        border-radius: 12px;
-        margin: 15px 0;
-        box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
-        backdrop-filter: blur(5px);
+        background: var(--success-bg) !important;
+        border: 1px solid var(--success-border) !important;
+        border-left: 5px solid var(--success-primary) !important;
+        padding: var(--space-6) var(--space-8) !important;
+        border-radius: var(--radius-lg) !important;
+        margin: var(--space-5) 0 !important;
+        box-shadow: var(--success-glow) !important;
+        backdrop-filter: var(--glass-blur) !important;
+        position: relative;
+        overflow: hidden;
     }
     
-    /* Info box with vibrant blue gradient */
+    .success-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(ellipse at top left, rgba(0, 255, 0, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+    }
+    
+    .success-box h3, .success-box h4 {
+        color: var(--success-secondary) !important;
+        font-weight: 700 !important;
+        margin-bottom: var(--space-3) !important;
+        text-shadow: 0 2px 10px rgba(0, 255, 0, 0.3);
+    }
+    
+    .success-box p, .success-box li {
+        color: var(--text-secondary) !important;
+        font-size: 14px !important;
+    }
+    
+    .success-box ul {
+        margin: var(--space-3) 0 !important;
+        padding-left: var(--space-6) !important;
+    }
+    
+    .success-box strong {
+        color: var(--text-primary) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       INFO BOX - Informational Content
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
     .info-box {
-        background: linear-gradient(135deg, rgba(75, 158, 255, 0.2) 0%, rgba(0, 100, 255, 0.1) 100%);
-        border-left: 5px solid #4b9eff;
-        padding: 20px;
-        border-radius: 12px;
-        margin: 15px 0;
-        box-shadow: 0 4px 15px rgba(75, 158, 255, 0.3);
-        backdrop-filter: blur(5px);
+        background: var(--info-bg) !important;
+        border: 1px solid var(--info-border) !important;
+        border-left: 5px solid var(--info-primary) !important;
+        padding: var(--space-6) var(--space-8) !important;
+        border-radius: var(--radius-lg) !important;
+        margin: var(--space-5) 0 !important;
+        box-shadow: var(--info-glow) !important;
+        backdrop-filter: var(--glass-blur) !important;
+        position: relative;
+        overflow: hidden;
     }
     
-    /* AI recommendation panel with vibrant purple gradient */
+    .info-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(ellipse at top left, rgba(75, 158, 255, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+    }
+    
+    .info-box h3, .info-box h4 {
+        color: var(--info-secondary) !important;
+        font-weight: 700 !important;
+        margin-bottom: var(--space-3) !important;
+    }
+    
+    .info-box p, .info-box li {
+        color: var(--text-secondary) !important;
+        font-size: 14px !important;
+    }
+    
+    .info-box ul {
+        margin: var(--space-3) 0 !important;
+        padding-left: var(--space-6) !important;
+    }
+    
+    .info-box strong {
+        color: var(--text-primary) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       AI RECOMMENDATION PANEL - Premium Purple Gradient
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
     .ai-recommendation {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 25px;
-        border-radius: 15px;
-        margin: 20px 0;
-        color: white;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: var(--ai-gradient) !important;
+        padding: var(--space-8) var(--space-10) !important;
+        border-radius: var(--radius-2xl) !important;
+        margin: var(--space-8) 0 !important;
+        color: white !important;
+        box-shadow: var(--ai-glow) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .ai-recommendation::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -30%;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+        pointer-events: none;
+    }
+    
+    .ai-recommendation::after {
+        content: '';
+        position: absolute;
+        bottom: -30%;
+        left: -20%;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+        pointer-events: none;
     }
     
     .ai-recommendation h3 {
-        color: white;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        color: white !important;
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+        margin-bottom: var(--space-5) !important;
+        position: relative;
+        z-index: 1;
     }
     
-    /* Confidence badge with vibrant green */
+    .ai-recommendation p {
+        color: rgba(255, 255, 255, 0.95) !important;
+        font-size: 15px !important;
+        line-height: 1.7 !important;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .ai-recommendation ol, .ai-recommendation ul {
+        margin: var(--space-4) 0 !important;
+        padding-left: var(--space-6) !important;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .ai-recommendation li {
+        color: rgba(255, 255, 255, 0.95) !important;
+        font-size: 15px !important;
+        margin-bottom: var(--space-3) !important;
+        line-height: 1.6 !important;
+    }
+    
+    .ai-recommendation strong {
+        color: white !important;
+        font-weight: 700 !important;
+    }
+    
+    .ai-recommendation em {
+        color: rgba(255, 255, 255, 0.85) !important;
+        font-style: italic !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       CONFIDENCE BADGE - Vibrant Green
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
     .confidence-badge {
-        background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
-        color: #000;
-        padding: 10px 20px;
-        border-radius: 25px;
-        font-weight: bold;
-        display: inline-block;
-        margin: 10px 0;
-        box-shadow: 0 4px 15px rgba(0, 255, 0, 0.4);
-        font-size: 14px;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: var(--space-2) !important;
+        background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%) !important;
+        color: #000 !important;
+        padding: var(--space-3) var(--space-6) !important;
+        border-radius: var(--radius-full) !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        letter-spacing: 0.02em !important;
+        box-shadow: var(--success-glow) !important;
+        margin: var(--space-4) 0 !important;
+        text-transform: uppercase;
     }
     
-    /* Enhanced tabs */
+    /* ═══════════════════════════════════════════════════════════════════════════
+       TABS - Modern Segmented Control
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+        gap: var(--space-2) !important;
+        background: var(--surface-elevated) !important;
+        padding: var(--space-2) !important;
+        border-radius: var(--radius-lg) !important;
+        border: 1px solid var(--glass-border) !important;
     }
     
     .stTabs [data-baseweb="tab"] {
-        background-color: rgba(255, 255, 255, 0.05);
-        border-radius: 10px;
-        padding: 10px 20px;
-        transition: all 0.3s ease;
+        background: transparent !important;
+        border-radius: var(--radius-md) !important;
+        padding: var(--space-3) var(--space-6) !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: var(--text-tertiary) !important;
+        border: none !important;
+        transition: all var(--transition-fast) !important;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        color: var(--text-secondary) !important;
+        background: var(--surface-hover) !important;
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--ai-gradient) !important;
+        color: white !important;
+        box-shadow: var(--shadow-md) !important;
     }
     
-    /* Responsive design improvements */
-    @media (max-width: 768px) {
-        .stMetric {
-            padding: 15px;
+    /* ═══════════════════════════════════════════════════════════════════════════
+       EXPANDERS - Premium Accordion
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    .streamlit-expanderHeader {
+        background: var(--glass-bg) !important;
+        backdrop-filter: var(--glass-blur) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: var(--radius-lg) !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        padding: var(--space-5) var(--space-6) !important;
+        color: var(--text-secondary) !important;
+        transition: all var(--transition-base) !important;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background: var(--surface-hover) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .streamlit-expanderContent {
+        background: var(--surface-elevated) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-top: none !important;
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+        padding: var(--space-6) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       BUTTONS - Premium Actions
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    .stButton > button {
+        background: var(--glass-bg) !important;
+        backdrop-filter: var(--glass-blur) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: var(--radius-lg) !important;
+        padding: var(--space-4) var(--space-8) !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        transition: all var(--transition-base) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+    
+    .stButton > button:hover {
+        background: var(--surface-hover) !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: var(--shadow-lg) !important;
+    }
+    
+    .stButton > button[kind="primary"] {
+        background: var(--ai-gradient) !important;
+        border: none !important;
+        color: white !important;
+        box-shadow: var(--ai-glow) !important;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        transform: translateY(-3px) !important;
+        box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       DATAFRAMES & TABLES
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    .stDataFrame {
+        border-radius: var(--radius-lg) !important;
+        overflow: hidden !important;
+    }
+    
+    .stDataFrame [data-testid="stDataFrameResizable"] {
+        border: 1px solid var(--glass-border) !important;
+        border-radius: var(--radius-lg) !important;
+        background: var(--surface-base) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       CHECKBOXES
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    .stCheckbox {
+        background: var(--glass-bg) !important;
+        backdrop-filter: var(--glass-blur) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: var(--radius-lg) !important;
+        padding: var(--space-4) var(--space-6) !important;
+        margin: var(--space-3) 0 !important;
+        transition: all var(--transition-base) !important;
+    }
+    
+    .stCheckbox:hover {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background: var(--surface-hover) !important;
+    }
+    
+    .stCheckbox label {
+        font-size: 15px !important;
+        font-weight: 500 !important;
+        color: var(--text-secondary) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, rgba(15, 12, 41, 0.95) 0%, rgba(36, 36, 62, 0.95) 100%) !important;
+        border-right: 1px solid var(--glass-border) !important;
+    }
+    
+    [data-testid="stSidebar"] .block-container {
+        padding: var(--space-6) var(--space-5) !important;
+    }
+    
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3 {
+        color: var(--text-primary) !important;
+    }
+    
+    [data-testid="stSidebar"] p {
+        color: var(--text-secondary) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       ALERTS & NOTIFICATIONS
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    .stAlert {
+        border-radius: var(--radius-lg) !important;
+        border: none !important;
+        backdrop-filter: var(--glass-blur) !important;
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       RESPONSIVE DESIGN
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    @media (max-width: 1200px) {
+        .block-container {
+            padding: var(--space-6) var(--space-5) !important;
         }
+        
+        h1 {
+            font-size: 32px !important;
+        }
+        
         .ai-recommendation {
-            padding: 15px;
+            padding: var(--space-6) !important;
         }
+    }
+    
+    @media (max-width: 768px) {
+        .block-container {
+            padding: var(--space-4) var(--space-3) !important;
+        }
+        
+        h1 {
+            font-size: 26px !important;
+        }
+        
+        .stMetric {
+            padding: var(--space-4) !important;
+        }
+        
+        [data-testid="stMetricValue"] {
+            font-size: 28px !important;
+        }
+        
+        .warning-box, .success-box, .info-box {
+            padding: var(--space-4) var(--space-5) !important;
+        }
+        
+        .ai-recommendation {
+            padding: var(--space-5) !important;
+        }
+    }
+    
+    /* ═══════════════════════════════════════════════════════════════════════════
+       SCROLLBAR STYLING
+    ═══════════════════════════════════════════════════════════════════════════ */
+    
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: var(--surface-base);
+        border-radius: var(--radius-full);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--surface-overlay);
+        border-radius: var(--radius-full);
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--surface-hover);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Paths
-# Paths - Using relative paths for cloud deployment compatibility
+# ═══════════════════════════════════════════════════════════════════════════════
+# DATA LOADING
+# ═══════════════════════════════════════════════════════════════════════════════
 DATA_DIR = "cleaned_data"
 
 @st.cache_data
@@ -137,7 +776,10 @@ def load_data():
 
 sku_df, picker_df, constraints_df, order_df = load_data()
 
-# --- PRE-PROCESSING ---
+# ═══════════════════════════════════════════════════════════════════════════════
+# DATA PRE-PROCESSING
+# ═══════════════════════════════════════════════════════════════════════════════
+
 # Ensure IDs are strings and clean for merging
 for df in [sku_df, picker_df, constraints_df]:
     for col in ['sku_id', 'current_slot', 'slot_id']:
@@ -146,7 +788,6 @@ for df in [sku_df, picker_df, constraints_df]:
 
 # 1. Spoilage Risk
 sku_slot_df = sku_df.merge(constraints_df, left_on='current_slot', right_on='slot_id', how='left')
-# Derive aisle for potential bottleneck analysis
 sku_slot_df['aisle'] = sku_slot_df['current_slot'].astype(str).str.strip().apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
 spoilage_mask = (sku_slot_df['temp_req'] != sku_slot_df['temp_zone']) & sku_slot_df['temp_zone'].notna()
 spoilage_count = spoilage_mask.sum()
@@ -166,15 +807,11 @@ else:
 
 # Robust Aisle and Time Extraction
 picker_sku_df = picker_df.merge(sku_df[['sku_id', 'current_slot']], on='sku_id', how='left')
-
-# Parse timestamps with fallback
 picker_sku_df['movement_timestamp'] = pd.to_datetime(picker_sku_df['movement_timestamp'], errors='coerce')
 if 'order_timestamp' in picker_df.columns:
     picker_sku_df['movement_timestamp'] = picker_sku_df['movement_timestamp'].fillna(pd.to_datetime(picker_sku_df['order_timestamp'], errors='coerce'))
-
 picker_sku_df['hour'] = picker_sku_df['movement_timestamp'].dt.hour
 
-# Extract Aisle from slot
 def get_aisle(slot):
     slot = str(slot)
     if '-' in slot:
@@ -182,10 +819,8 @@ def get_aisle(slot):
     return 'Unknown'
 
 picker_sku_df['aisle'] = picker_sku_df['current_slot'].apply(get_aisle)
-
-# Drop only purely invalid rows for charts
 picker_sku_df = picker_sku_df.dropna(subset=['hour'])
-picker_sku_df = picker_sku_df[picker_sku_df['aisle'] != 'Unknown'] # For heatmap, we want known aisles
+picker_sku_df = picker_sku_df[picker_sku_df['aisle'] != 'Unknown']
 
 # Count picks per Aisle per Hour
 heatmap_data = picker_sku_df.groupby(['aisle', 'hour']).size().reset_index(name='pick_count')
@@ -199,7 +834,9 @@ aisle_b_peak_count = peak_19.iloc[0]['pick_count'] if len(peak_19) > 0 else 0
 weight_violation_mask = (sku_slot_df['weight_kg'] > sku_slot_df['max_weight_kg'])
 weight_viol_count = weight_violation_mask.sum()
 
-# --- CHAOS SCORE CALCULATION (FORMALIZED) ---
+# ═══════════════════════════════════════════════════════════════════════════════
+# CHAOS SCORE CALCULATION (FORMALIZED)
+# ═══════════════════════════════════════════════════════════════════════════════
 BASELINE_PICK_TIME = 3.8  # minutes (target)
 
 # Component 1: Efficiency Degradation
@@ -221,7 +858,9 @@ spoilage_score = spoilage_loss_raw * spoilage_weight
 raw_chaos = (efficiency_score + safety_score + spoilage_score) * 100
 chaos_score = min(100, raw_chaos)
 
-# --- DASHBOARD LAYOUT ---
+# ═══════════════════════════════════════════════════════════════════════════════
+# DASHBOARD LAYOUT
+# ═══════════════════════════════════════════════════════════════════════════════
 
 st.title("🏭 VelocityMart: Warehouse Operations Center")
 st.markdown("### 📊 Interim Head of Operations Report")
@@ -254,8 +893,9 @@ with col4:
               delta=f"{spoilage_rate:.1%} of inventory",
               delta_color="inverse")
 
-# --- DYNAMIC AI RECOMMENDATION SYSTEM ---
-# Generate recommendations based on actual data analysis
+# ═══════════════════════════════════════════════════════════════════════════════
+# DYNAMIC AI RECOMMENDATION SYSTEM
+# ═══════════════════════════════════════════════════════════════════════════════
 recommendations = []
 
 # Priority 1: Temperature Violations (HARD CONSTRAINT)
@@ -281,7 +921,7 @@ if aisle_b_peak_count > 0:
     recommendations.append({
         'priority': 'P1',
         'title': 'Relocate High-Velocity SKUs from Aisle B',
-        'description': f'{sku_in_aisle_b} SKUs causing systematic gridlock at 19:00 peak hour. Forklift access blocked when &gt;2 pickers present.',
+        'description': f'{sku_in_aisle_b} SKUs causing systematic gridlock at 19:00 peak hour. Forklift access blocked when >2 pickers present.',
         'impact': impact_time,
         'severity': severity,
         'roi': roi
@@ -330,14 +970,12 @@ if avg_pick_time_min > BASELINE_PICK_TIME * 1.2:
         'roi': roi
     })
 
-# Display AI Recommendations Panel with Beautiful Purple Gradient
-# Build the complete HTML in one clean block to ensure proper rendering (NO leading spaces)
+# Display AI Recommendations Panel
 recommendations_html = '<div class="ai-recommendation">'
 recommendations_html += '<h3>🤖 AI-Powered Operational Recommendations</h3>'
 recommendations_html += '<p><strong>Immediate Actions Required:</strong></p>'
 recommendations_html += '<ol>'
 
-# Add top 3 recommendations dynamically
 for rec in recommendations[:3]:
     recommendations_html += f"<li><strong>{rec['title']}</strong> - {rec['description']}</li>"
 
@@ -347,7 +985,9 @@ recommendations_html += '</div>'
 
 st.markdown(recommendations_html, unsafe_allow_html=True)
 
-# Tabs
+# ═══════════════════════════════════════════════════════════════════════════════
+# TABS
+# ═══════════════════════════════════════════════════════════════════════════════
 tab_overview, tab_heatmap, tab_spoilage, tab_constraints, tab_whatif = st.tabs([
     "📈 Overview", 
     "🗺️ Aisle Heatmap", 
@@ -356,8 +996,10 @@ tab_overview, tab_heatmap, tab_spoilage, tab_constraints, tab_whatif = st.tabs([
     "🔮 What-If Simulation"
 ])
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB 1: OVERVIEW
+# ═══════════════════════════════════════════════════════════════════════════════
 with tab_overview:
-    # Chaos Score Breakdown
     st.subheader("🎯 Chaos Score Breakdown (Mathematically Defensible)")
     
     with st.expander("📐 View Detailed Formula & Rationale", expanded=True):
@@ -383,7 +1025,6 @@ with tab_overview:
         - **Safety (25%)**: Regulatory and liability risk - Unsafe picker behavior
         """)
     
-    # Visual Breakdown
     st.subheader("📊 Operational Chaos Factors (Weighted Contributions)")
     
     chaos_breakdown = pd.DataFrame({
@@ -432,7 +1073,6 @@ with tab_overview:
     
     st.info("**Key Insight:** Inventory Risk (temperature violations) contributes the most to chaos due to its 40% weight and high violation rate (61.3%). This is a HARD CONSTRAINT that must be resolved first.")
     
-    # Executive Summary
     st.subheader("📋 Executive Summary (Board-Ready)")
     
     st.markdown(f"""
@@ -455,10 +1095,12 @@ with tab_overview:
     </div>
     """, unsafe_allow_html=True)
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB 2: HEATMAP
+# ═══════════════════════════════════════════════════════════════════════════════
 with tab_heatmap:
     st.subheader("🗺️ Hourly Aisle Congestion: Identifying Bottleneck Zones")
     
-    # Aisle B Warning Banner
     st.markdown(f"""
     <div class="warning-box">
     <h3>🚨 CRITICAL BOTTLENECK IDENTIFIED: Aisle {aisle_b_code}</h3>
@@ -478,7 +1120,7 @@ with tab_heatmap:
         y='aisle', 
         z='pick_count', 
         nbinsx=24, 
-        color_continuous_scale='Viridis',  # Restored vibrant Viridis color scheme
+        color_continuous_scale='Viridis',
         title='Pick Activity Density (Darker = Higher Congestion)',
         labels={'hour': 'Hour of Day (0-23)', 'aisle': 'Warehouse Aisle', 'pick_count': 'Number of Picks'}
     )
@@ -497,7 +1139,6 @@ with tab_heatmap:
         font=dict(color='#ffffff')
     )
     
-    # Add annotation for Aisle B @ 19:00
     fig_heatmap.add_annotation(
         x=19,
         y=aisle_b_code,
@@ -517,7 +1158,6 @@ with tab_heatmap:
     
     st.plotly_chart(fig_heatmap, use_container_width=True)
     
-    # Top Congested Aisle-Hours
     st.subheader("📊 Top 10 Congested Aisle-Hour Combinations")
     top_congested = heatmap_data.sort_values('pick_count', ascending=False).head(10)
     top_congested['congestion_level'] = top_congested['pick_count'].apply(
@@ -534,6 +1174,9 @@ with tab_heatmap:
         hide_index=True
     )
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB 3: SPOILAGE RISK
+# ═══════════════════════════════════════════════════════════════════════════════
 with tab_spoilage:
     st.subheader("❄️ Temperature Integrity Analysis (HARD CONSTRAINT Violations)")
     
@@ -555,7 +1198,6 @@ with tab_spoilage:
     if spoilage_count > 0:
         st.error(f"🚨 CRITICAL: {spoilage_count} SKUs ({spoilage_rate:.1%}) are in the wrong temperature zone.")
         
-        # Breakdown by temperature requirement
         temp_breakdown = sku_slot_df[spoilage_mask].groupby(['temp_req', 'temp_zone']).size().reset_index(name='count')
         
         col1, col2 = st.columns(2)
@@ -593,10 +1235,12 @@ with tab_spoilage:
     else:
         st.success("✅ No temperature violations detected. All SKUs are in compatible temperature zones.")
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB 4: CONSTRAINTS CHECK
+# ═══════════════════════════════════════════════════════════════════════════════
 with tab_constraints:
     st.subheader("⚖️ Physical Constraint Violations")
     
-    # Weight Violations
     st.markdown("### 🏋️ Weight Capacity Violations")
     
     st.markdown("""
@@ -638,7 +1282,6 @@ with tab_constraints:
             hide_index=True
         )
     
-    # Illegal Shortcuts Context
     st.markdown("### 🏃 Illegal Picker Shortcuts (Safety & Compliance Risk)")
     
     st.markdown(f"""
@@ -662,7 +1305,6 @@ with tab_constraints:
     </div>
     """, unsafe_allow_html=True)
     
-    # Shortcut frequency by hour
     if 'is_suspicious' in picker_df.columns:
         shortcut_by_hour = picker_sku_df[picker_sku_df['is_suspicious'] == True].groupby('hour').size().reset_index(name='shortcut_count')
         
@@ -703,6 +1345,9 @@ with tab_constraints:
         
         st.plotly_chart(fig_shortcuts, use_container_width=True)
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB 5: WHAT-IF SIMULATION
+# ═══════════════════════════════════════════════════════════════════════════════
 with tab_whatif:
     st.subheader("🔮 What-If Simulation (Executive Decision Support)")
     
@@ -713,14 +1358,13 @@ with tab_whatif:
     </div>
     """, unsafe_allow_html=True)
     
-    # Scenario 1: Volume Increase
     st.markdown("### 📈 Scenario 1: +20% Order Volume Increase")
     
     volume_increase = st.checkbox("Simulate +20% Volume Spike", value=False)
     
     if volume_increase:
-        projected_pick_time = avg_pick_time_min * 1.35  # Assume 35% degradation
-        projected_shortcuts = int(illegal_shortcuts * 1.5)  # Assume 50% more shortcuts
+        projected_pick_time = avg_pick_time_min * 1.35
+        projected_shortcuts = int(illegal_shortcuts * 1.5)
         
         st.markdown(f"""
         <div class="warning-box">
@@ -746,7 +1390,6 @@ with tab_whatif:
         </div>
         """, unsafe_allow_html=True)
     
-    # Scenario 2: Aisle B Closure
     st.markdown("### 🚧 Scenario 2: Aisle B Closure During Peak Hour")
     
     aisle_b_closure = st.checkbox("Simulate Aisle B Closure (19:00)", value=False)
@@ -763,17 +1406,17 @@ with tab_whatif:
         </div>
         """, unsafe_allow_html=True)
 
-# --- FIX PRIORITY BUTTON ---
+# ═══════════════════════════════════════════════════════════════════════════════
+# FIX PRIORITY BUTTON
+# ═══════════════════════════════════════════════════════════════════════════════
 st.markdown("---")
 st.subheader("🎯 Priority Fix Recommendations")
 
 if st.button("🔧 Show Top 10 SKUs to Move NOW", type="primary"):
     st.markdown("### 🚀 Immediate Action Items (Ranked by Impact)")
     
-    # Identify top priority SKUs
     priority_skus = sku_slot_df[spoilage_mask].copy()
     
-    # Add order volume if available
     if 'sku_id' in order_df.columns:
         sku_volume = order_df.groupby('sku_id').size().reset_index(name='order_volume')
         priority_skus = priority_skus.merge(sku_volume, on='sku_id', how='left')
@@ -781,16 +1424,11 @@ if st.button("🔧 Show Top 10 SKUs to Move NOW", type="primary"):
     else:
         priority_skus['order_volume'] = 0
     
-    # Check if in Aisle B
     priority_skus['in_aisle_b'] = priority_skus['aisle'] == aisle_b_code
-    
-    # Priority score: temp violation (1000) + volume + aisle B (500)
     priority_skus['priority_score'] = 1000 + priority_skus['order_volume'] + (priority_skus['in_aisle_b'] * 500)
     
-    # Sort and get top 10
     top_10_moves = priority_skus.nlargest(10, 'priority_score')
     
-    # Create reason column
     def create_reason(row):
         reasons = []
         reasons.append(f"❄️ TEMP VIOLATION: {row['temp_req']} required, in {row['temp_zone']} zone")
@@ -810,7 +1448,9 @@ if st.button("🔧 Show Top 10 SKUs to Move NOW", type="primary"):
     
     st.success(f"✅ Full slotting plan with {spoilage_count + weight_viol_count} total moves available in `final_slotting_plan.csv`")
 
-# Footer
+# ═══════════════════════════════════════════════════════════════════════════════
+# SIDEBAR
+# ═══════════════════════════════════════════════════════════════════════════════
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📄 Dashboard Information")
 st.sidebar.markdown(f"""
