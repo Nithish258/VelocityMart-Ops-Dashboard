@@ -146,6 +146,8 @@ constraints_df['slot_id'] = constraints_df['slot_id'].astype(str).str.strip()
 
 # 1. Spoilage Risk
 sku_slot_df = sku_df.merge(constraints_df, left_on='current_slot', right_on='slot_id', how='left')
+# Assign aisles to SKUs for bottleneck analysis
+sku_slot_df['aisle'] = sku_slot_df['current_slot'].astype(str).apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
 spoilage_mask = (sku_slot_df['temp_req'] != sku_slot_df['temp_zone']) & sku_slot_df['temp_zone'].notna()
 spoilage_count = spoilage_mask.sum()
 spoilage_rate = spoilage_count / len(sku_df) if len(sku_df) > 0 else 0
