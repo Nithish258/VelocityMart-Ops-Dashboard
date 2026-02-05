@@ -15,8 +15,8 @@ ENV/
 # order_history.csv
 # picker_movement.csv
 
-# Cleaned data
-cleaned_data/
+# Cleaned data (Include these for deployment)
+# cleaned_data/
 
 # IDEs
 .vscode/

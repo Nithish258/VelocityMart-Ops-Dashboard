@@ -124,7 +124,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Paths
-DATA_DIR = r"C:\Users\nithi\OneDrive\Desktop\dataverse\VelocityMart\cleaned_data"
+# Paths - Using relative paths for cloud deployment compatibility
+DATA_DIR = "cleaned_data"
 
 @st.cache_data
 def load_data():
