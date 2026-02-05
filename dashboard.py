@@ -138,16 +138,16 @@ def load_data():
 sku_df, picker_df, constraints_df, order_df = load_data()
 
 # --- PRE-PROCESSING ---
-# Ensure IDs are strings and stripped of whitespace
-sku_df['sku_id'] = sku_df['sku_id'].astype(str).str.strip()
-sku_df['current_slot'] = sku_df['current_slot'].astype(str).str.strip()
-picker_df['sku_id'] = picker_df['sku_id'].astype(str).str.strip()
-constraints_df['slot_id'] = constraints_df['slot_id'].astype(str).str.strip()
+# Ensure IDs are strings and clean for merging
+for df in [sku_df, picker_df, constraints_df]:
+    for col in ['sku_id', 'current_slot', 'slot_id']:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip().str.upper()
 
 # 1. Spoilage Risk
 sku_slot_df = sku_df.merge(constraints_df, left_on='current_slot', right_on='slot_id', how='left')
-# Assign aisles to SKUs for bottleneck analysis
-sku_slot_df['aisle'] = sku_slot_df['current_slot'].astype(str).apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
+# Derive aisle for potential bottleneck analysis
+sku_slot_df['aisle'] = sku_slot_df['current_slot'].astype(str).str.strip().apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
 spoilage_mask = (sku_slot_df['temp_req'] != sku_slot_df['temp_zone']) & sku_slot_df['temp_zone'].notna()
 spoilage_count = spoilage_mask.sum()
 spoilage_rate = spoilage_count / len(sku_df) if len(sku_df) > 0 else 0
@@ -164,22 +164,28 @@ if 'duration_sec' in picker_df.columns:
 else:
     avg_pick_time_min = 6.2
 
-# 4. Congestion / Aisle Traffic
-# Merge picker data with SKU info to get current slot (if needed)
+# Robust Aisle and Time Extraction
 picker_sku_df = picker_df.merge(sku_df[['sku_id', 'current_slot']], on='sku_id', how='left')
 
-# Robust Aisle Extraction: Use existing aisle column if available, else derive from slot
-if 'aisle' in picker_sku_df.columns:
-    # Use existing aisle, but fill 'Unknown' if NaN
-    picker_sku_df['aisle'] = picker_sku_df['aisle'].fillna('Unknown')
-else:
-    picker_sku_df['aisle'] = picker_sku_df['current_slot'].astype(str).apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
+# Parse timestamps with fallback
+picker_sku_df['movement_timestamp'] = pd.to_datetime(picker_sku_df['movement_timestamp'], errors='coerce')
+if 'order_timestamp' in picker_df.columns:
+    picker_sku_df['movement_timestamp'] = picker_sku_df['movement_timestamp'].fillna(pd.to_datetime(picker_sku_df['order_timestamp'], errors='coerce'))
 
-# Ensure timestamp is parsed properly
-picker_sku_df['hour'] = pd.to_datetime(picker_sku_df['movement_timestamp'], errors='coerce').dt.hour
+picker_sku_df['hour'] = picker_sku_df['movement_timestamp'].dt.hour
 
-# Drop rows with invalid data to prevent blank charts
-picker_sku_df = picker_sku_df.dropna(subset=['hour', 'aisle'])
+# Extract Aisle from slot
+def get_aisle(slot):
+    slot = str(slot)
+    if '-' in slot:
+        return slot.split('-')[0]
+    return 'Unknown'
+
+picker_sku_df['aisle'] = picker_sku_df['current_slot'].apply(get_aisle)
+
+# Drop only purely invalid rows for charts
+picker_sku_df = picker_sku_df.dropna(subset=['hour'])
+picker_sku_df = picker_sku_df[picker_sku_df['aisle'] != 'Unknown'] # For heatmap, we want known aisles
 
 # Count picks per Aisle per Hour
 heatmap_data = picker_sku_df.groupby(['aisle', 'hour']).size().reset_index(name='pick_count')
