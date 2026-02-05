@@ -403,7 +403,7 @@ with tab_overview:
         yaxis=dict(gridcolor='rgba(255,255,255,0.1)')
     )
     
-    st.plotly_chart(fig_chaos, width="stretch")
+    st.plotly_chart(fig_chaos, use_container_width=True)
     
     st.info("**Key Insight:** Inventory Risk (temperature violations) contributes the most to chaos due to its 40% weight and high violation rate (61.3%). This is a HARD CONSTRAINT that must be resolved first.")
     
@@ -490,7 +490,7 @@ with tab_heatmap:
         borderwidth=2
     )
     
-    st.plotly_chart(fig_heatmap, width="stretch")
+    st.plotly_chart(fig_heatmap, use_container_width=True)
     
     # Top Congested Aisle-Hours
     st.subheader("📊 Top 10 Congested Aisle-Hour Combinations")
@@ -505,7 +505,7 @@ with tab_heatmap:
             'pick_count': 'Pick Count',
             'congestion_level': 'Severity'
         }),
-        width="stretch",
+        use_container_width=True,
         hide_index=True
     )
 
@@ -676,7 +676,7 @@ with tab_constraints:
             hovermode='x unified'
         )
         
-        st.plotly_chart(fig_shortcuts, width="stretch")
+        st.plotly_chart(fig_shortcuts, use_container_width=True)
 
 with tab_whatif:
     st.subheader("🔮 What-If Simulation (Executive Decision Support)")
