@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Streamlit
+.streamlit/
+
+# Data (Optional: ignore large raw data if needed, but keeping for now)
+# order_history.csv
+# picker_movement.csv
+
+# Cleaned data
+cleaned_data/
+
+# IDEs
+.vscode/
+.idea/
