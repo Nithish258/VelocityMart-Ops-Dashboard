@@ -138,11 +138,17 @@ def load_data():
 sku_df, picker_df, constraints_df, order_df = load_data()
 
 # --- PRE-PROCESSING ---
+# Ensure IDs are strings and stripped of whitespace
+sku_df['sku_id'] = sku_df['sku_id'].astype(str).str.strip()
+sku_df['current_slot'] = sku_df['current_slot'].astype(str).str.strip()
+picker_df['sku_id'] = picker_df['sku_id'].astype(str).str.strip()
+constraints_df['slot_id'] = constraints_df['slot_id'].astype(str).str.strip()
+
 # 1. Spoilage Risk
 sku_slot_df = sku_df.merge(constraints_df, left_on='current_slot', right_on='slot_id', how='left')
 spoilage_mask = (sku_slot_df['temp_req'] != sku_slot_df['temp_zone']) & sku_slot_df['temp_zone'].notna()
 spoilage_count = spoilage_mask.sum()
-spoilage_rate = spoilage_count / len(sku_df)
+spoilage_rate = spoilage_count / len(sku_df) if len(sku_df) > 0 else 0
 
 # 2. Picker Statistics
 total_picks = len(picker_df)
@@ -157,10 +163,21 @@ else:
     avg_pick_time_min = 6.2
 
 # 4. Congestion / Aisle Traffic
-sku_slot_df['aisle'] = sku_slot_df['current_slot'].astype(str).apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
+# Merge picker data with SKU info to get current slot (if needed)
 picker_sku_df = picker_df.merge(sku_df[['sku_id', 'current_slot']], on='sku_id', how='left')
-picker_sku_df['aisle'] = picker_sku_df['current_slot'].astype(str).apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
-picker_sku_df['hour'] = pd.to_datetime(picker_sku_df['movement_timestamp']).dt.hour
+
+# Robust Aisle Extraction: Use existing aisle column if available, else derive from slot
+if 'aisle' in picker_sku_df.columns:
+    # Use existing aisle, but fill 'Unknown' if NaN
+    picker_sku_df['aisle'] = picker_sku_df['aisle'].fillna('Unknown')
+else:
+    picker_sku_df['aisle'] = picker_sku_df['current_slot'].astype(str).apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
+
+# Ensure timestamp is parsed properly
+picker_sku_df['hour'] = pd.to_datetime(picker_sku_df['movement_timestamp'], errors='coerce').dt.hour
+
+# Drop rows with invalid data to prevent blank charts
+picker_sku_df = picker_sku_df.dropna(subset=['hour', 'aisle'])
 
 # Count picks per Aisle per Hour
 heatmap_data = picker_sku_df.groupby(['aisle', 'hour']).size().reset_index(name='pick_count')
