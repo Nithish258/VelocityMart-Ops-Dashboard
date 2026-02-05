@@ -131,6 +131,13 @@ def load_data():
     picker_df = pd.read_csv(os.path.join(DATA_DIR, "picker_movement_cleaned.csv"))
     constraints_df = pd.read_csv(os.path.join(DATA_DIR, "warehouse_constraints_cleaned.csv"), dtype={'slot_id': str})
     order_df = pd.read_csv(os.path.join(DATA_DIR, "order_history_cleaned.csv"))
+    
+    # ID Normalization (CRITICAL for merging)
+    for df in [sku_df, picker_df, constraints_df]:
+        for col in ['sku_id', 'current_slot', 'slot_id']:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.strip().str.upper()
+    
     return sku_df, picker_df, constraints_df, order_df
 
 sku_df, picker_df, constraints_df, order_df = load_data()
@@ -138,9 +145,13 @@ sku_df, picker_df, constraints_df, order_df = load_data()
 # --- PRE-PROCESSING ---
 # 1. Spoilage Risk
 sku_slot_df = sku_df.merge(constraints_df, left_on='current_slot', right_on='slot_id', how='left')
+# Ensure types are correct for bool columns
+if 'is_ghost' in sku_slot_df.columns:
+    sku_slot_df['is_ghost'] = sku_slot_df['is_ghost'].astype(str).str.upper() == 'TRUE'
+
 spoilage_mask = (sku_slot_df['temp_req'] != sku_slot_df['temp_zone']) & sku_slot_df['temp_zone'].notna()
 spoilage_count = spoilage_mask.sum()
-spoilage_rate = spoilage_count / len(sku_df)
+spoilage_rate = spoilage_count / len(sku_df) if len(sku_df) > 0 else 0
 
 # 2. Picker Statistics
 total_picks = len(picker_df)
@@ -158,19 +169,27 @@ else:
 sku_slot_df['aisle'] = sku_slot_df['current_slot'].astype(str).apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
 picker_sku_df = picker_df.merge(sku_df[['sku_id', 'current_slot']], on='sku_id', how='left')
 picker_sku_df['aisle'] = picker_sku_df['current_slot'].astype(str).apply(lambda x: x.split('-')[0] if '-' in x else 'Unknown')
-picker_sku_df['hour'] = pd.to_datetime(picker_sku_df['movement_timestamp']).dt.hour
+
+# Robust timestamp parsing
+picker_sku_df['movement_timestamp'] = pd.to_datetime(picker_sku_df['movement_timestamp'], errors='coerce')
+picker_sku_df['hour'] = picker_sku_df['movement_timestamp'].dt.hour
 
 # Count picks per Aisle per Hour
 heatmap_data = picker_sku_df.groupby(['aisle', 'hour']).size().reset_index(name='pick_count')
 
 # Identify Aisle B (highest congestion at 19:00)
-peak_19 = heatmap_data[heatmap_data['hour'] == 19].sort_values('pick_count', ascending=False)
+peak_19 = heatmap_data[heatmap_data['hour'] == 19.0].sort_values('pick_count', ascending=False)
 aisle_b_code = peak_19.iloc[0]['aisle'] if len(peak_19) > 0 else 'B01'
 aisle_b_peak_count = peak_19.iloc[0]['pick_count'] if len(peak_19) > 0 else 0
 
 # 5. Weight Violations
 weight_violation_mask = (sku_slot_df['weight_kg'] > sku_slot_df['max_weight_kg'])
 weight_viol_count = weight_violation_mask.sum()
+
+# Ensure is_suspicious is bool
+if 'is_suspicious' in picker_df.columns:
+    picker_df['is_suspicious'] = (picker_df['is_suspicious'].astype(str).str.upper() == 'TRUE')
+    picker_sku_df['is_suspicious'] = (picker_sku_df['is_suspicious'].astype(str).str.upper() == 'TRUE')
 
 # --- CHAOS SCORE CALCULATION (FORMALIZED) ---
 BASELINE_PICK_TIME = 3.8  # minutes (target)
@@ -366,50 +385,52 @@ with tab_heatmap:
     
     st.markdown("**This heatmap visualizes picker activity density across all aisles and hours to identify congestion patterns.**")
     
-    fig_heatmap = px.density_heatmap(
-        heatmap_data, 
-        x='hour', 
-        y='aisle', 
-        z='pick_count', 
-        nbinsx=24, 
-        color_continuous_scale='Viridis',  # Restored vibrant Viridis color scheme
-        title='Pick Activity Density (Darker = Higher Congestion)',
-        labels={'hour': 'Hour of Day (0-23)', 'aisle': 'Warehouse Aisle', 'pick_count': 'Number of Picks'}
-    )
-    
-    fig_heatmap.update_layout(
-        title={
-            'text': 'Pick Activity Density (Darker = Higher Congestion)',
-            'font': {'size': 18, 'color': '#ffffff'}
-        },
-        template="plotly_dark",
-        height=550,
-        xaxis=dict(dtick=1, gridcolor='rgba(255,255,255,0.1)'),
-        yaxis=dict(gridcolor='rgba(255,255,255,0.1)'),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#ffffff')
-    )
-    
-    # Add annotation for Aisle B @ 19:00
-    fig_heatmap.add_annotation(
-        x=19,
-        y=aisle_b_code,
-        text="⚠️ BOTTLENECK",
-        showarrow=True,
-        arrowhead=2,
-        arrowcolor="red",
-        arrowsize=1,
-        arrowwidth=2,
-        ax=-40,
-        ay=-40,
-        font=dict(size=14, color="red"),
-        bgcolor="rgba(255,0,0,0.3)",
-        bordercolor="red",
-        borderwidth=2
-    )
-    
-    st.plotly_chart(fig_heatmap, use_container_width=True)
+    if not heatmap_data.empty:
+        # Create a full matrix for imshow
+        heatmap_matrix = heatmap_data.pivot(index='aisle', columns='hour', values='pick_count').fillna(0)
+        
+        # Sort aisles for better display
+        heatmap_matrix = heatmap_matrix.sort_index(ascending=False)
+        
+        fig_heatmap = px.imshow(
+            heatmap_matrix,
+            labels=dict(x="Hour of Day", y="Aisle", color="Pick Count"),
+            color_continuous_scale='Viridis',
+            aspect='auto',
+            title='Pick Activity Matrix (Darker = Higher Congestion)'
+        )
+        
+        fig_heatmap.update_layout(
+            template="plotly_dark",
+            height=550,
+            xaxis=dict(dtick=1),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='#ffffff')
+        )
+        
+        # Add annotation for bottleneck if identified
+        if len(peak_19) > 0:
+            fig_heatmap.add_annotation(
+                x=19,
+                y=aisle_b_code,
+                text="⚠️ BOTTLENECK",
+                showarrow=True,
+                arrowhead=2,
+                arrowcolor="red",
+                arrowsize=1,
+                arrowwidth=2,
+                ax=-40,
+                ay=-40,
+                font=dict(size=14, color="red"),
+                bgcolor="rgba(255,0,0,0.3)",
+                bordercolor="red",
+                borderwidth=2
+            )
+        
+        st.plotly_chart(fig_heatmap, use_container_width=True)
+    else:
+        st.warning("No activity data available to generate heatmap.")
     
     # Top Congested Aisle-Hours
     st.subheader("📊 Top 10 Congested Aisle-Hour Combinations")
@@ -558,44 +579,52 @@ with tab_constraints:
     
     # Shortcut frequency by hour
     if 'is_suspicious' in picker_df.columns:
-        shortcut_by_hour = picker_sku_df[picker_sku_df['is_suspicious'] == True].groupby('hour').size().reset_index(name='shortcut_count')
+        # Filter only suspicious and drop NaN hours
+        suspicious_df = picker_sku_df[picker_sku_df['is_suspicious'] == True].dropna(subset=['hour'])
         
-        fig_shortcuts = go.Figure()
-        fig_shortcuts.add_trace(go.Scatter(
-            x=shortcut_by_hour['hour'],
-            y=shortcut_by_hour['shortcut_count'],
-            mode='lines+markers',
-            name='Illegal Shortcuts',
-            line=dict(color='#ff6b6b', width=4, shape='spline'),
-            marker=dict(
-                size=10,
-                color=shortcut_by_hour['shortcut_count'],
-                colorscale='Reds',
-                showscale=False,
-                line=dict(color='white', width=2)
-            ),
-            fill='tozeroy',
-            fillcolor='rgba(255, 107, 107, 0.3)'
-        ))
-        
-        fig_shortcuts.update_layout(
-            title={
-                'text': "Illegal Shortcut Frequency by Hour (Correlation with Peak Congestion)",
-                'font': {'size': 18, 'color': '#ffffff'}
-            },
-            xaxis_title="Hour of Day",
-            yaxis_title="Number of Illegal Shortcuts",
-            template="plotly_dark",
-            height=450,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='#ffffff'),
-            xaxis=dict(gridcolor='rgba(255,255,255,0.1)', showgrid=True),
-            yaxis=dict(gridcolor='rgba(255,255,255,0.1)', showgrid=True),
-            hovermode='x unified'
-        )
-        
-        st.plotly_chart(fig_shortcuts, use_container_width=True)
+        if not suspicious_df.empty:
+            shortcut_by_hour = suspicious_df.groupby('hour').size().reset_index(name='shortcut_count')
+            
+            fig_shortcuts = go.Figure()
+            fig_shortcuts.add_trace(go.Scatter(
+                x=shortcut_by_hour['hour'],
+                y=shortcut_by_hour['shortcut_count'],
+                mode='lines+markers',
+                name='Illegal Shortcuts',
+                line=dict(color='#ff6b6b', width=4, shape='spline'),
+                marker=dict(
+                    size=10,
+                    color=shortcut_by_hour['shortcut_count'],
+                    colorscale='Reds',
+                    showscale=False,
+                    line=dict(color='white', width=2)
+                ),
+                fill='tozeroy',
+                fillcolor='rgba(255, 107, 107, 0.3)'
+            ))
+            
+            fig_shortcuts.update_layout(
+                title={
+                    'text': "Illegal Shortcut Frequency by Hour (Correlation with Peak Congestion)",
+                    'font': {'size': 18, 'color': '#ffffff'}
+                },
+                xaxis_title="Hour of Day",
+                yaxis_title="Number of Illegal Shortcuts",
+                template="plotly_dark",
+                height=450,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#ffffff'),
+                xaxis=dict(gridcolor='rgba(255,255,255,0.1)', showgrid=True, dtick=1),
+                yaxis=dict(gridcolor='rgba(255,255,255,0.1)', showgrid=True),
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig_shortcuts, use_container_width=True)
+        else:
+            st.info("No illegal shortcuts detected to display frequency distribution.")
+    else:
+        st.info("Safety violation status column missing from movement data.")
 
 with tab_whatif:
     st.subheader("🔮 What-If Simulation (Executive Decision Support)")
